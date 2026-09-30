@@ -26,13 +26,13 @@ def main():
         for p,_ in source_files():
             if p.suffix in ('.md','.json','.py','.yml','.yaml','.html'):
                 p.write_text(p.read_text(encoding='utf-8').replace(old,repo),encoding='utf-8')
-    run('node','--test','tests/test_core.cjs')
+    run('node','--test',*[str(p.relative_to(ROOT)) for p in sorted((ROOT/'tests').glob('test_*.cjs'))])
     run(sys.executable,'-m','unittest','discover','-s','tests','-p','test_tooling*.py','-v')
     run(sys.executable,'build.py');run('git','init','-b','main')
     for key,value in [('user.name',user.get('name') or user['login']),('user.email',f'{user["id"]}+{user["login"]}@users.noreply.github.com')]:
         if run('git','config','--get',key,capture=True,check=False).returncode:run('git','config','--local',key,value)
     run('git','add','--',*[str(p.relative_to(ROOT)) for p,_ in source_files()])
-    run('git','commit','-m','Initial De-slopifier release: session counts, promoted-post hiding, and publishing workflows')
+    run('git','commit','-m','Initial De-slopifier release: automatic follow sync, session counts, ad hiding, and publishing workflows')
     run('gh','repo','create',repo,'--public','--source','.','--remote','origin','--push','--description',config['description'])
     print('Created repository: https://github.com/'+repo)
     if args.no_wait:return

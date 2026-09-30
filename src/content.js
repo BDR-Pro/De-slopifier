@@ -41,7 +41,8 @@
   }
   function networkReason() {
     if (!graph.cfg.myHandle) return 'Set your own handle in Settings';
-    if (!graph.ready) return 'Save your own Following list first';
+    if (!graph.ready) return 'Connect X for automatic sync, or save your own Following list';
+    if (graph.syncIncomplete) return 'Automatic sync coverage is incomplete; keeping unverified posts visible';
     if (viewer() !== graph.cfg.myHandle) return 'Signed-in account does not match, or profile link is unavailable';
     return null;
   }
@@ -187,6 +188,23 @@
     scheduled = true;
     setTimeout(run, 60);
   }
+  let followHintTimer = null, followDialogUntil = 0;
+  function requestFollowRefresh() {
+    clearTimeout(followHintTimer);
+    followHintTimer = setTimeout(() => {
+      const signedIn = viewer();
+      if (!signedIn || !ext.runtime.sendMessage) return;
+      ext.runtime.sendMessage({ type: 'ds:followHint', viewer: signedIn }).catch(() => {});
+    }, 5000);
+  }
+  document.addEventListener('click', event => {
+    const button = event.target.closest?.('[data-testid]');
+    const id = button?.getAttribute('data-testid') || '';
+    if (/^[0-9]+-(?:follow|unfollow)$/.test(id)) {
+      followDialogUntil = Date.now() + 60000; requestFollowRefresh();
+    } else if (id === 'confirmationSheetConfirm' && Date.now() < followDialogUntil) requestFollowRefresh();
+  }, true);
+
   const observer = new MutationObserver(schedule);
   observer.observe(document.documentElement, { subtree: true, childList: true,
     attributes: true, attributeFilter: ['href', 'aria-selected', 'data-testid'], characterData: true });
@@ -224,6 +242,7 @@
     disposed = true;
     observer.disconnect();
     clearInterval(navigationTimer);
+    clearTimeout(followHintTimer);
     clearHidden();
   });
 

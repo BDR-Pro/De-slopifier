@@ -1,7 +1,7 @@
 <!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>De-slopifier — Settings</title><link rel="stylesheet" href="ui.css"></head>
 <body><main><p class="kicker">De-slopifier / Settings</p><h1>A feed closer to your circle.</h1>
-<p>Keep posts by the accounts you follow and, optionally, the accounts they follow. Everything stays in this browser.</p>
+<p>Keep posts by the accounts you follow and, optionally, the accounts they follow. Filtering and saved lists stay local. Optional automatic sync reads your network directly from X.</p>
 <div id="message" role="status" aria-live="polite"></div>
 <section class="card"><h2>1. Choose your account and behavior</h2>
 <label for="me">Your X handle</label><input id="me" type="text" placeholder="your_handle" autocomplete="off" maxlength="16">
@@ -16,7 +16,21 @@
 <label for="mode">What to do with excluded posts</label><select id="mode"><option value="hide">Hide / collapse — reversible (recommended)</option><option value="remove">Remove article HTML — experimental; reload to undo</option></select>
 <p class="notice">Removing nodes can interfere with X's page rendering. Hiding is the default. Neither mode prevents initial network downloads or guarantees that X will not record impressions.</p>
 <div class="row"><button id="saveSettings">Save settings</button></div></section>
-<section class="card"><h2>2. Add or review following lists</h2>
+<section class="card" id="automaticSync"><h2>2. Automatic following sync — no scrolling</h2>
+<p>Connect X once to download your following list and the lists of people you follow. New follows and unfollows are picked up automatically; no scrolling or CSV imports are required.</p>
+<p class="notice"><strong>Setup required:</strong> This uses the official X API, not your website login cookies. Configure an X OAuth 2.0 public-client app and API access first. X API reads may incur charges, especially for large second-degree networks. Set a spending limit in the X Developer Console; the request cap below is not a dollar cap.</p>
+<label for="syncClient">X OAuth Client ID (public value, not a secret)</label><input id="syncClient" type="text" autocomplete="off" spellcheck="false" placeholder="Client ID from your X developer app">
+<label for="syncCallback">Exact callback URL to register in the X developer app</label><input id="syncCallback" type="text" readonly value="Loading callback URL…">
+<p class="hint">Choose a Native App or Single Page App (public client). Register the callback shown above exactly. Do not paste your password, cookies, client secret, or bearer token. See docs/AUTO-SYNC.md in the source package.</p>
+<div class="two"><div><label for="syncInterval">Check my follows every (minutes)</label><input id="syncInterval" type="number" min="5" max="1440" value="15"></div><div><label for="syncSecondHours">Refresh second-degree lists every (hours)</label><input id="syncSecondHours" type="number" min="1" max="168" value="24"></div></div>
+<label for="syncLimit">Maximum API read attempts per UTC day</label><input id="syncLimit" type="number" min="1" max="2000" value="200">
+<label class="check"><input id="syncConsent" type="checkbox">I understand that API reads are sent to X and can consume credits or incur charges on the configured developer app.</label>
+<label class="check"><input id="syncEnabled" type="checkbox">Enable automatic sync while this browser is running</label>
+<label class="check"><input id="syncPartial" type="checkbox">Filter using incomplete sync results (may hide people who actually qualify)</label>
+<p class="hint">By default, network filtering waits for complete initial coverage; ad hiding can still work. If a list is unavailable or a safety/request cap is reached, it is not silently treated as empty. Disable second-degree filtering for direct-follows-only operation.</p>
+<div class="row"><button id="syncSave">Save sync settings</button><button id="syncConnect">Connect X</button><button id="syncNow" class="secondary">Sync now</button><button id="syncDisconnect" class="danger">Disconnect X</button></div>
+<p id="syncStatus" role="status" aria-live="polite">Automatic sync is not configured.</p><p id="syncDetails" class="hint"></p><p id="syncLast" class="hint"></p><p id="syncUnavailable" class="hint"></p><p id="syncError" class="error" role="alert"></p></section>
+<section class="card"><h2>3. Manual lists — optional fallback</h2>
 <p id="graphStats"></p><p class="hint">Only lists belonging to your account and its direct follows affect the filter. Lists for other accounts are ignored. A missing list means incomplete coverage, not proof that someone is outside your network.</p>
 <p class="notice">Capture is a best-effort reading of visible account cards. Review for suggested accounts or other mistakes. Scroll the entire list before calling it complete. Protected or unavailable relationships are not bypassed.</p>
 <div class="two"><div><label for="owner">Whose Following list is this?</label><input id="owner" type="text" placeholder="your_handle or a direct follow" autocomplete="off" maxlength="16"></div>
@@ -25,11 +39,11 @@
 <p id="draftInfo" class="hint">One handle per line; commas, spaces, @handles and X profile URLs are also accepted. Do not paste profile bios or tweet text.</p>
 <label class="check"><input id="complete" type="checkbox">I reviewed this list and believe it is complete (not independently verified)</label>
 <div class="row"><button id="replace">Save / replace list</button><button id="merge" class="secondary">Merge partial capture</button><button id="deleteList" class="danger">Delete this saved list</button></div>
-<p class="hint">Replace removes stale follows from that list. Merge only adds accounts and marks the result partial. Unfollowing is not synchronized automatically. Edit one copy of the same list at a time.</p></section>
-<section class="card"><h2>3. Import or back up the graph</h2><p>Import the included JSON format, or export your reviewed lists. JSON never executes as code.</p>
+<p class="hint">Replace removes stale follows from that list. Merge only adds accounts and marks the result partial. With automatic sync enabled, API snapshots replace manual edits to the active network. Edit one copy of the same list at a time.</p></section>
+<section class="card"><h2>4. Import or back up the graph</h2><p>Import the included JSON format, or export your reviewed lists. JSON never executes as code.</p>
 <label for="importFile">Graph JSON (maximum 20 MB)</label><input id="importFile" type="file" accept=".json,application/json">
 <div class="row"><button id="importButton" class="secondary">Import selected file</button><button id="exportButton" class="secondary">Export saved lists</button></div>
 <p class="hint">Import overwrites only the list owners present in the file, changes your configured handle, and disables filtering until you review it. Other saved lists stay stored. Export includes relationship handles; keep the file private.</p>
 <div class="row"><button id="erase" class="danger">Erase all extension data</button></div></section>
-<footer class="hint">The popup shows cumulative blocked posts for this tab since reload or Reset, split into network filtering and ads. Stable post IDs are counted once; cards without IDs are an estimate. Prototype: selectors must be checked against your live X layout. No automatic graph download. No cookies, tokens, DMs or passwords are accessed by this code. No telemetry or network requests are sent by the extension. Locally stored data is not separately encrypted.</footer>
-</main><script src="core.js"></script><script src="settings.js"></script></body></html>
+<footer class="hint">The popup shows cumulative blocked posts for this tab since reload or Reset, split into network filtering and ads. Stable post IDs are counted once; cards without IDs are an estimate. Prototype: selectors must be checked against your live X layout. Automatic sync is opt-in and requires X API setup. OAuth tokens stay in extension-origin credential storage, separate from content scripts and exports. Requests go directly to X; no developer backend, telemetry, cookies, DMs, passwords or social-write actions. Locally stored data is not separately encrypted.</footer>
+</main><script src="core.js"></script><script src="settings.js"></script><script src="sync-ui.js"></script></body></html>

@@ -70,8 +70,10 @@ def main():
             dest=target/rel;dest.parent.mkdir(parents=True,exist_ok=True);shutil.copyfile(p,dest)
         manifest=dict(base);manifest.pop('browser_specific_settings',None)
         if browser=='firefox':
+            manifest.pop('minimum_chrome_version',None)
+            manifest['background']={'scripts':['core.js','sync-engine.js','oauth.js','background.js']}
             manifest['browser_specific_settings']={'gecko':{'id':config['firefox_id'],'strict_min_version':'140.0',
-                'data_collection_permissions':{'required':['none']}}}
+                'data_collection_permissions':{'required':['none'],'optional':['authenticationInfo','personallyIdentifyingInfo']}}}
         (target/'manifest.json').write_text(json.dumps(manifest,indent=2)+'\n',encoding='utf-8')
         archive(package/f'de-slopifier-{v}-{browser}.zip',files(target))
         print('Built',target)

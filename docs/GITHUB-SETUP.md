@@ -16,7 +16,7 @@ Repository links are adjusted; copyright and Firefox identity are not changed.
 The script checks availability, tests/builds source, initializes main, sets a local
 Git identity only when none is configured, stages explicitly allowed project files,
 and creates a **public** repo with its description. It pushes and watches the first
-Release workflow, which produces v0.1.0 and rolling downloads after CI passes.
+Release workflow, which produces v0.2.0 and rolling downloads after CI passes.
 No browser-store publication occurs until you separately configure it.
 
 No repository or release is created merely by extracting this archive. After setup

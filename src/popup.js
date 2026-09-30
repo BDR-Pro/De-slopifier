@@ -14,6 +14,9 @@
   }
   async function refresh() {
     $('error').textContent = '';
+    if (ext.runtime.sendMessage) ext.runtime.sendMessage({ type: 'ds:status' }).then(r => {
+      if (r?.ok) $('autoSyncStatus').textContent = r.data.message;
+    }).catch(() => {});
     try {
       const s = await send('twohop:status');
       $('status').textContent = s.reason;
@@ -21,7 +24,7 @@
       $('sessionBreakdown').textContent = `${s.session.network.toLocaleString()} outside your network · ${s.session.ads.toLocaleString()} ads`;
       $('sessionEstimate').textContent = s.session.estimated ? `${s.session.estimated} counted cards had no detectable post ID; those may be counted again if X remounts them.` : 'Detected post IDs are counted once in this session.';
       $('stats').textContent = `${s.direct} direct · ${s.second} second-degree · ${s.kept} kept / ${s.hidden} hidden in the current rendered batch · ${s.removed} removed since reload`;
-      $('coverage').textContent = `Lists saved for ${s.captured}/${s.totalParents} direct follows. Own list: ${s.ownComplete ? 'user-marked complete' : 'partial/unverified'}.`;
+      $('coverage').textContent = `Lists saved for ${s.captured}/${s.totalParents} direct follows. Own list: ${s.ownComplete ? 'complete snapshot' : 'partial/unverified'}.`;
       $('capture').textContent = s.capture ? `@${s.capture.owner}: ${s.capture.count} handles. ${s.capture.running ? 'Capturing as you scroll.' : 'Stopped.'} ${s.capture.stoppedReason || ''}` : 'No capture in this tab.';
       $('start').disabled = Boolean(s.capture);
       $('stop').disabled = !s.capture;

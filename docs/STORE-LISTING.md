@@ -1,36 +1,25 @@
-# Suggested listing text
+# Store listing draft — review before publishing
 
-Name: De-slopifier
+**Name:** De-slopifier
 
-Summary: Filter X For You by your following network, hide detected promoted posts,
+**Summary:** Filter X For You by your following network, hide detected promoted posts,
 and count blocked posts this session.
 
-Keep posts by you, your direct follows, and optionally people those accounts follow.
-Provide following lists by text entry, JSON import, or reviewed capture of visible
-Following pages. No automatic graph download or refresh. The extension does not
-detect AI content or decide what is high quality; it filters by your chosen network.
+**Description:** Keep authors you follow and optionally the accounts those people
+follow. Track cumulative blocked posts and detected ads in the current X tab.
+Version 0.2.0 adds opt-in automatic following-list sync, automatic new-follow/unfollow
+refresh, and second-degree pagination without scrolling. It requires an X developer
+OAuth application, API access and one-time authorization. API usage may incur charges.
+This distribution does not include a live Client ID. Manual lists remain available.
 
-Optionally hide detected promoted posts, including those from followed authors.
-See cumulative blocked posts with an ads/network breakdown and Reset. Counters are
-per tab since reload/reset, not browser-wide. Detected IDs are counted once; missing-ID
-cards are estimates. Local-only: no analytics, backend, account actions, or credential
-access. Capture/export are user-initiated. Protect graph exports.
+Filtering and graph storage stay local. Optional authenticated API requests go directly
+to X, not a developer server. No telemetry, website-cookie access or social-write
+actions. Initial incomplete API coverage keeps unverified posts visible by default.
+Ad hiding is best effort and does not disable ads on the X account or all downloads.
+Not affiliated with X, Google or Mozilla. Read PRIVACY.md and AUTO-SYNC.md.
 
-Prototype limitations: X layout/ad changes can affect detection. Incomplete lists can
-hide eligible authors. It does not block every ad format or prevent initial downloads
-or guarantee no impression tracking. Hide mode is reversible; literal DOM removal is
-experimental and requires reloading to undo. Live X and Firefox runtime verification
-remain necessary before claims of general compatibility.
-
-Not affiliated with X, Google or Mozilla. Review this copy and all store declarations
-against the exact submitted version. Set the public PRIVACY.md URL and complete the
-store's actual privacy questionnaire. No transmitted data does not mean no local processing.
-
-Single purpose: filtering X Home posts by a user-configured local network and
-optionally promoted-post status. storage saves settings/lists; activeTab connects the
-user-opened popup to the active tab; X/Twitter host matches support SPA navigation.
-No remotely hosted code. Session IDs/counters remain in tab memory.
-
-Assets: src/icons/icon-128.png; docs/popup.png and docs/settings.png show actual UI
-with synthetic test data, not a verified live X session. Prepare required screenshot
-sizes and supply any reviewer test account credentials privately in the dashboard.
+**Privacy/store disclosure:** Do not reuse the 0.1.0 "no network/no credentials"
+answers. Declare optional authentication/identifying transmission to X and explain
+local relationship storage, OAuth grants, permissions, cost controls and deletion.
+Review each store's current questionnaire and supply a published privacy policy.
+Screenshots show synthetic counters; never pass them off as live user activity.

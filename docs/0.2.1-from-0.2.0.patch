@@ -1,0 +1,270 @@
+--- a/README.md
++++ b/README.md
+@@ -1,4 +1,6 @@
+ # De-slopifier
++
++**v0.2.1 API connection update:** See [Firefox API permission fix and diagnostics](docs/API-CONNECTION-FIX.md) for the `X API could not be reached` error. This patch requests API website access explicitly and reports more specific network failures.
+ 
+ **Your feed. Your circle.**
+ 
+--- a/CHANGELOG.md
++++ b/CHANGELOG.md
+@@ -1,4 +1,12 @@
+ # Changelog
++
++## 0.2.1 — API permission and error diagnostics
++
++- Explicitly request `https://api.x.com/*` website permission from Save (when enabled), Connect X, and Sync now. Include Firefox's existing optional data consent in that request.
++- Check API host permission in the background before OAuth and before every API request. Denied local permission is not mistaken for a private/inaccessible following list.
++- Distinguish the 20-second timeout from other fetch failures and identify the operation without logging tokens, request bodies, query strings, or raw error messages.
++- Keep the existing PKCE, credential storage, fail-closed redirect policy, and API billing safeguards unchanged.
++- A permissions gap is fixed; whether it caused a particular user's error still requires a live retry. No claim of a successful live X login is made.
+ 
+ ## 0.2.0 — 2026-09-30
+ 
+--- a/TESTING.md
++++ b/TESTING.md
+@@ -1,4 +1,12 @@
+ # Testing status
++
++## v0.2.1 patch verification — 2026-09-30
++
++- 68 JavaScript unit/controller tests passed, including missing API host permission, denial before OAuth, timeout classification, and secret-safe errors.
++- 22 Python packaging/tooling tests passed.
++- 70 Chromium DOM fixture checks and 16 Chromium sync UI fixture checks passed. Browser extension services and X API/OAuth responses were mocked.
++- All runtime JavaScript passed `node --check`.
++- Native Firefox runtime and live authenticated X authorization/API access were not tested. Passing fixtures do not establish that the user's network issue is resolved.
+ 
+ Local verification date: 2026-09-30. Version: 0.2.0.
+ 
+--- a/src/background.js
++++ b/src/background.js
+@@ -3,14 +3,18 @@
+ (() => {
+   'use strict';
+   const ext = globalThis.browser || globalThis.chrome, S = globalThis.DSSync, O = globalThis.DSOAuth, T = globalThis.TwoHop;
+-  async function requireDataConsent() {
++  async function requireApiPermissions() {
++    if (!await ext.permissions.contains({ origins: ['https://api.x.com/*'] })) {
++      // This is a local permission failure, not an HTTP 403 from a private list.
++      throw new S.ApiError('De-slopifier is not allowed to access api.x.com. Open Settings, click Connect X (or Sync now), and approve the website permission.');
++    }
+     const types = ext.runtime.getManifest().browser_specific_settings?.gecko?.data_collection_permissions?.optional;
+     if (types) {
+       const granted = await ext.permissions.getAll();
+       if (!types.every(type => granted.data_collection?.includes(type))) throw new S.ApiError('Grant the optional Firefox data permissions from Connect X before syncing.', 403);
+     }
+   }
+-  const api = new O.Client({ beforeRequest: requireDataConsent });
++  const api = new O.Client({ beforeRequest: requireApiPermissions });
+   const engine = new S.Engine({ storage: ext.storage.local, request: (id, cursor) => api.following(id, cursor) });
+   // All writers, OAuth actions and alarm ticks share a queue. No racing refreshes.
+   let tail = Promise.resolve();
+@@ -65,7 +69,7 @@
+     const day = S.dateKey(Date.now()), oldBudget = d.syncState?.budget;
+     const used = oldBudget?.day === day ? oldBudget.used : 0;
+     if (used >= c.maxRequestsPerDay) throw new Error('Daily API-read cap reached. Increase it explicitly or connect after 00:00 UTC.');
+-    await requireDataConsent();
++    await requireApiPermissions();
+     const redirect = ext.identity.getRedirectURL('oauth2'), proof = await O.pkce();
+     const returned = await ext.identity.launchWebAuthFlow({ url: O.authorizationURL(c.clientId, redirect, proof), interactive: true });
+     const code = O.callbackCode(returned, redirect, proof.state);
+--- a/src/manifest.json
++++ b/src/manifest.json
+@@ -1,7 +1,7 @@
+ {
+   "manifest_version": 3,
+   "name": "De-slopifier",
+-  "version": "0.2.0",
++  "version": "0.2.1",
+   "description": "Filter X For You by your following network, hide detected promoted posts, and count blocked posts this session.",
+   "permissions": [
+     "storage",
+--- a/src/oauth.js
++++ b/src/oauth.js
+@@ -58,7 +58,17 @@
+       const controller = new AbortController(), timeout = setTimeout(() => controller.abort(), 20000);
+       let response;
+       try { response = await this.fetch(API + path, { ...options, credentials: 'omit', redirect: 'error', cache: 'no-store', signal: controller.signal }); }
+-      catch { throw new S.ApiError('X API could not be reached.'); }
++      catch (error) {
++        // Report the operation, not URLs, request bodies, tokens, or raw error text.
++        const operation = path.startsWith('/2/oauth2/token') ? 'OAuth token exchange/refresh'
++          : path.startsWith('/2/oauth2/revoke') ? 'OAuth revocation'
++          : path.startsWith('/2/users/me') ? 'account lookup' : 'following-list download';
++        if (controller.signal.aborted || error?.name === 'AbortError') {
++          throw new S.ApiError(`X API timed out after 20 seconds during ${operation}. Check your connection and try again.`);
++        }
++        const kind = ['TypeError', 'NetworkError', 'SecurityError'].includes(error?.name) ? ` (${error.name})` : '';
++        throw new S.ApiError(`X API request failed during ${operation}${kind}. No readable HTTP response was received. Check api.x.com website permission and the extension's Network panel for a blocked request, redirect, or connection failure.`);
++      }
+       finally { clearTimeout(timeout); }
+       if (!response.ok) {
+         const labels = { 400: 'X rejected the request or OAuth app configuration.', 401: 'X rejected the authorization.',
+--- a/src/sync-ui.js
++++ b/src/sync-ui.js
+@@ -4,7 +4,11 @@
+   let busy = false, initialized = false;
+   async function dataPermission() {
+     const types = ext.runtime.getManifest?.().browser_specific_settings?.gecko?.data_collection_permissions?.optional;
+-    if (types && !await ext.permissions.request({ data_collection: types })) throw new Error('Optional X authorization/data permissions were not granted. Manual mode remains available.');
++    // Request the API origin inside the original button click, before any await.
++    // Declaring host_permissions alone does not guarantee a grant after an update.
++    const requested = { origins: ['https://api.x.com/*'] };
++    if (types) requested.data_collection = types;
++    if (!await ext.permissions.request(requested)) throw new Error('X API website/data permissions were not granted. Allow api.x.com access and try again. Manual mode remains available.');
+   }
+   async function send(type, extra = {}) {
+     const reply = await ext.runtime.sendMessage({ type, ...extra });
+@@ -48,7 +52,10 @@
+     if (!confirm('Disconnect X and stop automatic reads? Your cached lists will remain local.')) return;
+     initialized = false; render(await send('ds:disconnect'));
+   }));
+-  $('syncNow').addEventListener('click', () => action(async () => render(await send('ds:syncNow'))));
++  $('syncNow').addEventListener('click', () => action(async () => {
++    await dataPermission();
++    render(await send('ds:syncNow'));
++  }));
+   const timer = setInterval(() => { if (!busy) send('ds:status').then(render).catch(() => {}); }, 2000);
+   addEventListener('pagehide', () => clearInterval(timer), { once: true });
+   send('ds:status').then(render).catch(e => { $('syncError').textContent = e.message; });
+--- /dev/null
++++ b/docs/API-CONNECTION-FIX.md
+@@ -0,0 +1,49 @@
++# De-slopifier 0.2.1: X API permission and diagnostics update
++
++This package patches the v0.2.0 downloadable build. It has not been pushed to GitHub or submitted to a browser store.
++
++## Install in Firefox
++
++1. Back up your following lists using the existing export feature. Do not erase extension data.
++2. Replace the files in the existing unpacked extension folder with this package's `dist/firefox` contents. Keep the same add-on ID.
++3. Open `about:debugging#/runtime/this-firefox` and click **Reload** for De-slopifier. Reopen the extension settings page.
++4. Click **Connect X**, approve the `api.x.com` website permission and existing optional data permissions when Firefox asks, then authorize X again. If already connected, use **Sync now**.
++5. The callback should remain stable when the add-on ID is unchanged. Compare the displayed callback to your X app before reconnecting; do not regenerate secrets.
++
++Firefox may not show a new permissions prompt if access was already granted. A denied grant now produces an explicit permissions message before authorization instead of attempting the network request.
++
++## If a request still fails
++
++Open `about:debugging` → **This Firefox** → **De-slopifier / Inspect** → **Console**. This read-only check prints whether the API host grant exists:
++
++```js
++browser.permissions.contains({origins: ["https://api.x.com/*"]}).then(console.log)
++```
++
++`false` means API access is not granted. `true` only confirms host permission; it does not prove network reachability, valid X authorization, or billing access.
++
++Use the extension toolbox's **Network** tab, retry **Connect X** or **Sync now**, and inspect requests to `api.x.com`. The request method, endpoint path without its query string, HTTP status if present, and browser error name are sufficient for initial troubleshooting. Do not share Authorization headers, OAuth codes, cookies, request/response bodies containing tokens, or a full HAR export.
++
++Do not disable browser security/CORS checks or send tokens through a third-party proxy. Requests still reject redirects and do not include website cookies.
++
++## Build
++
++```sh
++python3 build.py
++```
++
++Windows: `py -3 build.py`. Firefox build: `dist/firefox`; Chromium build: `dist/chromium`.
++
++## Scope of verification
++
++The tests exercise mocked permissions and API responses. Live X authorization, the user's network, and a native Firefox runtime are not verified here. A missing host permission is one plausible cause of the original generic error, not the only possible cause.
++
++## Verification results for this patch
++
++68 JavaScript tests, 22 Python tooling tests, 70 Chromium DOM fixture checks, and 16 Chromium sync UI fixture checks passed. All runtime JavaScript passed syntax checks. X authorization and API responses were mocked.
++
++## Primary documentation
++
++- https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/manifest.json/host_permissions
++- https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/API/permissions/request
++- https://extensionworkshop.com/documentation/develop/debugging/
+--- a/tests/test_background.cjs
++++ b/tests/test_background.cjs
+@@ -8,7 +8,7 @@
+ const S = require('../src/sync-engine.js');
+ const O = require('../src/oauth.js');
+ 
+-function harness(initial = {}, {firefox = false, grant = true, username = 'me'} = {}) {
++function harness(initial = {}, {firefox = false, grant = true, hostGrant = true, username = 'me'} = {}) {
+   const saved = structuredClone(initial), calls = [], alarms = new Map();
+   let receiver, alarmListener, auth;
+   const store = {
+@@ -28,7 +28,7 @@
+   const origin = 'chrome-extension://example';
+   const ext = {
+     storage:{local:store},
+-    permissions:{async getAll() {return {data_collection:grant ? ['authenticationInfo','personallyIdentifyingInfo'] : []};}},
++    permissions:{async contains(p) {assert.deepEqual(p.origins.join(','),'https://api.x.com/*');return hostGrant;},async getAll() {return {data_collection:grant ? ['authenticationInfo','personallyIdentifyingInfo'] : []};}},
+     runtime:{id:'example',getURL(path) {return origin+path;},getManifest() {return firefox ? {browser_specific_settings:{gecko:{data_collection_permissions:{optional:['authenticationInfo','personallyIdentifyingInfo']}}}} : {};},
+       onMessage:{addListener(fn) {receiver=fn;}},onInstalled:{addListener() {}},onStartup:{addListener() {}}},
+     alarms:{async create(name, options) {alarms.set(name,options);},async clear(name) {return alarms.delete(name);},onAlarm:{addListener(fn) {alarmListener=fn;}}},
+@@ -102,3 +102,20 @@
+   const before=JSON.stringify(h.saved); const r=await h.send('ds:followHint',{viewer:'stranger',handles:['outsider']},h.tab);
+   assert.equal(r.ok,true); assert.equal(JSON.stringify(h.saved),before);
+ });
++
++for (const firefox of [false, true]) {
++  test(`missing API host grant blocks ${firefox ? 'Firefox' : 'Chromium'} before OAuth`, async () => {
++    const h = harness({autoSync:opted}, {firefox,hostGrant:false});
++    const r = await h.send('ds:connect');
++    assert.equal(r.ok,false); assert.match(r.error,/not allowed to access api\.x\.com/);
++    assert.equal(h.calls.length,0);
++  });
++}
++test('missing API grant blocks a following read without marking its list inaccessible', async () => {
++  const s = S.freshState({id:'1',username:'me'});
++  const h = harness({autoSync:opted,syncState:s,settings:{myHandle:'me'}}, {hostGrant:false});
++  await h.send('ds:syncNow');
++  assert.ok(!h.calls.some(c=>c.startsWith('following:')));
++  assert.match(h.saved.syncState.message,/api\.x\.com/);
++  assert.equal(h.saved['following:me'],undefined);
++});
+--- a/tests/test_sync.cjs
++++ b/tests/test_sync.cjs
+@@ -183,3 +183,26 @@
+ test('unrecognized token response is rejected rather than persisted', () => {
+   const client=new O.Client();for(const bad of [{},{access_token:'a',token_type:'basic',expires_in:10},{access_token:'a',token_type:'bearer',expires_in:-1}]) assert.throws(()=>client.normalizedToken(bad));
+ });
++
++test('network errors identify the operation without disclosing request secrets', async () => {
++  const c = new O.Client({fetchImpl:async()=>{throw new TypeError('SECRET-TOKEN raw diagnostic');}});
++  await assert.rejects(()=>c.token({refresh_token:'SECRET-TOKEN'}), e => {
++    assert.match(e.message,/OAuth token exchange\/refresh/);
++    assert.match(e.message,/TypeError/);
++    assert.ok(!e.message.includes('SECRET-TOKEN'));
++    return true;
++  });
++});
++test('timeouts receive a distinct message', async () => {
++  const c = new O.Client({fetchImpl:async()=>{throw new DOMException('aborted','AbortError');}});
++  await assert.rejects(()=>c.me({accessToken:'not-logged'}),/timed out after 20 seconds during account lookup/);
++});
++test('HTTP configuration and billing errors are not reclassified as network failures', async () => {
++  for (const status of [400,401,402,403,429]) {
++    const c = new O.Client({fetchImpl:async()=>new Response('{}',{status})});
++    await assert.rejects(()=>c.http('/2/users/me'), e => {
++      assert.equal(e.status,status); assert.ok(!e.message.includes('No readable HTTP'));
++      return true;
++    });
++  }
++});
+--- a/tests/test_sync_ui.py
++++ b/tests/test_sync_ui.py
+@@ -48,6 +48,7 @@
+     page.locator('#syncEnabled').check(); page.locator('#syncSave').click()
+     page.wait_for_timeout(100)
+     check('failed consent/configuration is shown to the user', 'possible charges' in page.locator('#syncError').inner_text())
++    check('API host permission is requested alongside optional Firefox data consent',page.evaluate('testPermissions.length===1 && testPermissions[0].origins[0]==="https://api.x.com/*"'))
+     check('Firefox optional data consent is requested by the click handler',page.evaluate('testPermissions.length===1 && testPermissions[0].data_collection.includes("authenticationInfo")'))
+     page.locator('#syncConsent').check();page.locator('#syncSave').click();page.wait_for_timeout(100)
+     check('saved opt-in settings are sent to the background', page.evaluate('testCalls.filter(m=>m.type==="ds:configure").at(-1).config.consent===true'))
+@@ -55,6 +56,7 @@
+     check('connect first saves configuration and then starts the OAuth action',page.evaluate('testCalls.at(-1).type==="ds:connect" && testCalls.at(-2).type==="ds:configure"'))
+     check('connected account and details are displayed', 'Connected as @me' in page.locator('#syncDetails').inner_text() and page.locator('#me').input_value()=='me')
+     page.locator('#syncNow').click();page.wait_for_timeout(100)
++    check('Sync now also requests API host access',page.evaluate('testPermissions.length===4 && testPermissions.at(-1).origins[0]==="https://api.x.com/*"'))
+     check('manual refresh button queues a background refresh',page.locator('#syncStatus').inner_text()=='Refresh queued.')
+     page.evaluate('status.unavailable=[{username:"private_list"}]; status.parentCount=2;status.parentsSynced=1;')
+     page.wait_for_timeout(2200)

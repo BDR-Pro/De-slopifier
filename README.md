@@ -1,5 +1,7 @@
 # De-slopifier
 
+**v0.2.1 API connection update:** See [Firefox API permission fix and diagnostics](docs/API-CONNECTION-FIX.md) for the `X API could not be reached` error. This patch requests API website access explicitly and reports more specific network failures.
+
 **Your feed. Your circle.**
 
 A Chromium and Firefox extension that filters X's **For You** feed using your
@@ -13,11 +15,15 @@ Bob follows Eve   → Eve does not qualify through this connection
 ```
 
 This is a relationship-based author filter, not an AI-content detector or a quality
-score. Following lists must be pasted, imported, or captured and reviewed locally.
-It does **not** automatically download or refresh your entire social graph.
+score. Version **0.2.0** adds **automatic following-list sync with no scrolling**,
+automatic new-follow/unfollow refresh, and second-degree pagination through X's
+official API. One-time X developer-app/API setup and OAuth authorization are required;
+website login alone is not enough. API reads may incur charges. Manual lists remain
+an optional fallback. See [automatic setup and costs](docs/AUTO-SYNC.md).
 
-> **Prototype:** incomplete lists can hide eligible authors. Current live X selectors,
-> real ads, and Firefox runtime compatibility have not been verified. Fixture test
+> **Prototype:** initial automatic coverage fails open by default; partial/stale lists
+> can still be incomplete. Live X OAuth/API authorization, selectors, real ads and
+> Firefox runtime compatibility have not been verified. Fixture test
 > results do not establish live compatibility. See [TESTING.md](TESTING.md).
 
 ## Session blocked-post counter
@@ -93,25 +99,35 @@ XPI. Renaming a ZIP does not sign it. Export your graph before switching install
 
 [Mozilla's temporary-installation guide](https://extensionworkshop.com/documentation/develop/temporary-installation-in-firefox/).
 
-## First-time setup
+## First-time setup — automatic
 
-1. Open **Settings & lists**, enter your X handle, and save.
-2. On your `x.com/YOUR_HANDLE/following` page, select **Start capture**, close the
-   popup and scroll yourself, then **Stop & review**. Remove mistakes/suggestions
-   and **Save / replace list**. Pasting or JSON import is also supported.
-3. Add Following lists for your direct follows for second-degree coverage. Enable
-   filtering and return to For You.
+Open **Settings & lists** and save your handle. In **Automatic following sync**,
+register the displayed callback URL with an X public-client OAuth application,
+enter its public Client ID, review the API cost notice and request cap, enable sync,
+and click **Connect X**. Then enable the existing filtering switch.
 
-For ads-only testing you can enable filtering and ad hiding without saving a graph.
-For network filtering your configured handle must match the detected signed-in
-account. Quotes are classified by the outer author; reposts by their original author,
-not the reposter. Mentions never grant access. See [full usage notes](docs/USAGE.md).
+Your list downloads automatically, then the following lists of your direct follows.
+New follows are queued automatically. Direct follows refresh every 15 minutes by
+default, second-degree lists every 24 hours. Recognized Follow/Unfollow clicks request
+an earlier refresh; mobile/other-browser changes appear at the next successful poll.
+Browser sleep, rate limits, large graphs and the daily cap can delay synchronization.
+No follow-list pages need to be opened or scrolled.
+
+**One-time API setup is necessary.** This distribution has no live OAuth Client ID
+and does not claim a keyless, free, or already-connected integration. API requests go
+directly to X; it does not use your website cookies. [Full setup](docs/AUTO-SYNC.md).
+
+For ads-only testing, enable filtering and ad hiding without API configuration.
+Manual capture/paste/import is still available as a fallback. Network filtering
+requires your configured handle to match the signed-in X account. Use **Hide / collapse**
+so posts can be restored as the graph changes; experimental HTML removal requires
+reloading X to restore removed posts. [Detailed behavior](docs/USAGE.md).
 
 ## Build / compile from source
 
 There is **no JavaScript compilation or npm install** required to build the extension.
 Python 3.10+ copies the readable HTML/CSS/JS, writes the browser-specific manifest,
-and packages it. Icons are already bundled. No runtime/build dependencies or server.
+and packages it. Icons are already bundled. No third-party JavaScript dependencies or developer-operated server.
 
 From the extracted project directory:
 
@@ -141,7 +157,7 @@ produce identical ZIP bytes. Do not commit generated `dist/` files to the reposi
 Node.js 22+ is used for tests and Mozilla's publishing tool, not for the extension build.
 
 ```bash
-node --test tests/test_core.cjs
+node --test tests/test_*.cjs
 python3 -m unittest discover -s tests -p 'test_tooling*.py' -v
 ```
 
@@ -151,6 +167,7 @@ Optional Chromium fixtures use Playwright:
 python3 -m pip install -r requirements-test.txt
 python3 -m playwright install chromium
 python3 tests/test_browser.py
+python3 tests/test_sync_ui.py
 ```
 
 Set `CHROMIUM_EXECUTABLE` to use a system Chromium binary. X HTML, navigation and
@@ -195,9 +212,10 @@ See [publishing setup, secrets, and real install links](docs/PUBLISHING.md).
 
 ## Privacy and license
 
-Local storage only; no analytics, backend, cookies, passwords, DMs or auth tokens
-are read by this implementation. Session post IDs/counters live only in tab memory.
-Exports contain relationship information: keep them private. See [PRIVACY.md](PRIVACY.md).
+No analytics or developer backend. Optional OAuth tokens stay in a separate
+extension-origin credential store and are sent only to X for authorization/API use.
+The code does not read website cookies, passwords or DMs. Session counters stay in
+tab memory; graph exports contain relationships/IDs but not tokens. Keep them private. See [PRIVACY.md](PRIVACY.md).
 
 [MIT license](LICENSE), copyright 2026 Bader Alotaibi. [Security](SECURITY.md) ·
 [Contributing](CONTRIBUTING.md). Not affiliated with X, Google or Mozilla.

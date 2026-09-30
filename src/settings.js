@@ -127,12 +127,13 @@
   }));
   $('erase').addEventListener('click', () => action(async () => {
     if (!confirm('Erase all saved handles, settings and capture drafts from this extension?')) return;
-    await ext.storage.local.clear();
+    const result = await ext.runtime.sendMessage({ type: 'ds:erase' });
+    if (!result?.ok) throw new Error(result?.error || 'Reload the extension before erasing credentials.');
     putSettings(T.settings());
     $('owner').value = ''; $('handles').value = ''; $('complete').checked = false;
     $('draftInfo').textContent = 'No capture draft.';
     await renderLists();
-    notify('All extension storage erased. Reload any X tabs to clear in-memory captures and restore removed posts.');
+    notify('Local data and authorization erased. Check X connected-app settings if server revocation could not be confirmed. Reload any X tabs to clear in-memory captures and restore removed posts.');
   }));
   // A newly captured draft can arrive in an already-open options tab.
   ext.storage.onChanged.addListener((changes, area) => {

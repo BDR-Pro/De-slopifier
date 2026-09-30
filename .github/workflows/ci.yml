@@ -24,7 +24,7 @@ jobs:
       - name: Test and build
         run: |
           for file in src/*.js; do node --check "$file"; done
-          node --test tests/test_core.cjs
+          node --test tests/test_*.cjs
           python -m unittest discover -s tests -p 'test_tooling*.py' -v
           python build.py
       - name: Lint Firefox extension
@@ -36,6 +36,7 @@ jobs:
           python -m pip install -r requirements-test.txt
           python -m playwright install --with-deps chromium
           python tests/test_browser.py
+          python tests/test_sync_ui.py
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         if: always()
         with:

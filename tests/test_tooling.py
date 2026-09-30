@@ -18,12 +18,12 @@ class Packaging(unittest.TestCase):
     def test_chromium_root_manifest(self):
         with zipfile.ZipFile(self.package('chromium')) as z:
             m=json.loads(z.read('manifest.json'));self.assertEqual(m['name'],'De-slopifier');self.assertNotIn('browser_specific_settings',m)
-            self.assertEqual(set(m['permissions']),{'storage','activeTab'})
+            self.assertEqual(set(m['permissions']),{'storage','activeTab','identity','alarms'})
     def test_firefox_manifest_identity(self):
         with zipfile.ZipFile(self.package('firefox')) as z:
             g=json.loads(z.read('manifest.json'))['browser_specific_settings']['gecko']
             self.assertEqual(g['id'],json.loads((ROOT/'project.json').read_text())['firefox_id'])
-            self.assertEqual(g['data_collection_permissions'],{'required':['none']})
+            self.assertEqual(g['data_collection_permissions'],{'required':['none'],'optional':['authenticationInfo','personallyIdentifyingInfo']})
     def test_runtime_source_and_icons_match(self):
         for flavor in ('chromium','firefox'):
             with zipfile.ZipFile(self.package(flavor)) as z:

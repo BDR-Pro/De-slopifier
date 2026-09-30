@@ -2,7 +2,7 @@
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>De-slopifier</title><link rel="stylesheet" href="ui.css"></head>
 <body class="popup"><main>
-<p class="kicker">Local-only</p><h1>De-slopifier</h1>
+<p class="kicker">Local filtering / optional X sync</p><h1>De-slopifier</h1>
 <p class="hint">Your follows, plus the accounts they follow.</p>
 <section class="card" aria-label="Session blocked posts">
 <p class="kicker">Blocked this session</p>
@@ -14,10 +14,11 @@
 <section class="card"><strong id="status">Connecting to this tab…</strong>
 <p id="stats" class="hint"></p><p id="coverage" class="hint"></p></section>
 <div class="row"><button id="settings">Settings &amp; lists</button><button id="refresh" class="secondary">Refresh status</button></div>
-<section class="card"><h2>Following-list capture</h2>
+<section class="card"><h2>Automatic sync</h2><p id="autoSyncStatus" class="hint">Open Settings to connect X and enable automatic following sync.</p></section>
+<details><summary>Manual capture (optional fallback)</summary><section class="card"><h2>Following-list capture</h2>
 <p class="hint">Open a user's Following page, start capture, close this popup and scroll yourself. Then reopen and review. No automatic crawling.</p>
 <p id="capture" class="hint"></p>
 <div class="row"><button id="start" class="secondary">Start capture</button><button id="stop" class="secondary">Stop &amp; review</button><button id="discard" class="secondary">Discard</button></div>
-</section><div id="error" role="alert"></div>
-<footer class="hint">No API keys, remote server, analytics, or account actions.</footer>
+</section></details><div id="error" role="alert"></div>
+<footer class="hint">Optional sync requires an X OAuth app and API access. No developer server, analytics or social-write actions.</footer>
 </main><script src="popup.js"></script></body></html>

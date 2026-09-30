@@ -1,4 +1,4 @@
-/* De-slopifier. No network calls. Shared by content and extension pages. */
+/* De-slopifier. Graph and counters shared by content and extension pages. */
 (function (root) {
   'use strict';
   const DEFAULTS = Object.freeze({
@@ -82,9 +82,19 @@
     }
     const allowed = new Set([...direct, ...second]);
     if (me) allowed.add(me);
+    const syncedAccount = data.syncState?.account;
+    const apiComplete = entry => entry?.complete === true && entry?.source === 'x-api' &&
+      syncedAccount && entry.viewerId === syncedAccount.id;
+    const automaticReady = syncedAccount?.username === me && apiComplete(own) && own.userId === syncedAccount.id &&
+      (!cfg.includeSecondDegree || [...direct].every(parent => {
+        const entry = data[PREFIX + parent], meta = data.syncState?.parents?.[entry?.userId];
+        return apiComplete(entry) && meta?.username === parent && !meta.error;
+      }));
     return { cfg, allowed, direct, second, captured, declaredComplete,
       ready: Boolean(me && own && Array.isArray(own.handles)),
-      ownComplete: own?.complete === true };
+      ownComplete: own?.complete === true,
+      syncIncomplete: data.autoSync?.enabled === true && data.autoSync?.allowPartial !== true &&
+        !automaticReady };
   }
   function shouldKeep(author, graph) {
     const h = handle(author);

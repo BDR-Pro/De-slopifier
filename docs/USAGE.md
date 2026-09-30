@@ -2,7 +2,12 @@
 
 See README for the session counter and optional ad hiding.
 
-## First-time setup
+## Automatic setup (recommended for no scrolling)
+
+See [AUTO-SYNC.md](AUTO-SYNC.md) for one-time X API/OAuth setup, cost controls,
+automatic new-follow/unfollow updates, refresh intervals, limits and privacy.
+
+## Manual fallback setup
 
 1. Open **Settings & lists**, enter your own X handle, and **Save settings**. Leave filtering disabled during initial list preparation.
 2. On X open `https://x.com/YOUR_HANDLE/following` (Following, not Followers).
@@ -54,7 +59,7 @@ The “complete” checkbox is your declaration, not independent verification. C
 
 Capture reads `UserCell` cards in the first matching Following timeline region. It ignores the sidebar and profile-bio mentions, but X may place recommendations inside that same region. Therefore, **review captured lists**; do not treat capture as certified relationship data. If it captures zero handles, paste/import instead and verify the current X markup before updating the selector.
 
-Only relationships already visible to you or provided by you can be used. The extension does not bypass protected profiles or unavailable lists. It does not automatically refresh follows or unfollows. Use **Replace** for a fresh snapshot; **Merge partial capture** only adds handles and marks the result partial. Handle renames/reassignment can invalidate cached identities; this prototype does not resolve permanent user IDs.
+Only relationships already visible to you or provided by you can be used. The extension does not bypass protected profiles or unavailable lists. In manual-only mode it does not automatically refresh follows or unfollows. API mode does, as documented in AUTO-SYNC.md. Use **Replace** for a fresh snapshot; **Merge partial capture** only adds handles and marks the result partial. Handle renames/reassignment can invalidate cached identities; manual snapshots do not resolve permanent user IDs. API mode traverses parent lists by stable IDs, but post matching and cached child handles can still become stale until refreshed.
 
 Capture state lives in one tab's memory until you stop/review it; refreshing or closing that tab loses the capture. Changing the list owner or active account stops the capture to avoid mixing owners. Save or discard it before starting another capture in that tab.
 
@@ -78,9 +83,9 @@ An array can be used instead of each record; it is treated as an unverified/part
 
 ## Privacy and permissions
 
-The code makes **no network requests**, uses no API credentials, and does not read cookies, passwords, DMs, authentication tokens or browsing history. It does not follow/unfollow, like, repost, send messages, or change X account settings. It uses `storage.local`, not browser-sync storage. Saved handles and timestamps stay in the browser extension's local storage. They are not separately encrypted. Exported JSON contains personal relationship data, so keep it private.
-
-Permissions are `storage`, `activeTab`, and content-script/host access for HTTPS X and Twitter domains only. Broad host permission enables the script to survive X's client-side navigation; it does not mean this implementation reads every kind of page content. The code only inspects the account link, relevant home posts, and the explicit Following capture region.
-
-There is no page-to-extension `postMessage` bridge, remotely loaded code, `eval`, analytics or backend. Erase data in Settings and reload open X tabs to clear in-memory captures. The DOM is shared with X, so page-side filtering should not be treated as invisible to the site.
-
+Local filtering has no developer backend or telemetry. Optional automatic sync
+uses explicit X OAuth authorization and sends requests directly to X. It does not
+read website login cookies, passwords, or DMs and performs no social-write actions.
+API tokens are kept in extension-origin credential storage, not content scripts,
+page messages, logs or graph exports. See [PRIVACY.md](../PRIVACY.md) for all data
+handling and permissions, and [AUTO-SYNC.md](AUTO-SYNC.md) for opt-in and deletion.

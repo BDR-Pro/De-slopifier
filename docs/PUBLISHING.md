@@ -1,3 +1,8 @@
+> **0.2.0 update:** Automatic sync adds X OAuth/API access and optional data
+> transmission. Update store privacy answers and reviewer notes before publishing.
+> The store workflows do not create an X OAuth app, grant API access, or pay for
+> usage. See AUTO-SYNC.md and the updated PRIVACY.md. No live Client ID is bundled.
+
 # Chrome Web Store and Firefox Add-ons
 
 **Not published yet.** The source/workflows are prepared, but neither store listing
@@ -51,8 +56,8 @@ Web Store** manually, select that tag, and use `publish` (upload and submit) or 
 (upload only; submit the resulting draft manually in the dashboard).
 
 ```bash
-# Example only: v0.1.1 must exist and be newer than the version uploaded to the store.
-gh workflow run publish-chrome.yml --repo BDR-Pro/De-slopifier -f tag=v0.1.1 -f mode=publish
+# Example only: v0.2.1 must exist and be newer than the version uploaded to the store.
+gh workflow run publish-chrome.yml --repo BDR-Pro/De-slopifier -f tag=v0.2.1 -f mode=publish
 ```
 
 The helper uses API v2, polls asynchronous upload completion, blocks on warnings,
@@ -77,8 +82,8 @@ gh secret set AMO_JWT_SECRET --repo BDR-Pro/De-slopifier
 
 Review store/firefox-metadata.json: name, summary, description, categories, MIT license,
 and reviewer notes. The fixed add-on ID is **de-slopifier@bdr-pro**; do not change it
-after first publication. The generated manifest declares no transmitted data and
-Firefox 140 minimum. Android runtime compatibility is not tested or promised.
+after first publication. The generated manifest declares optional authentication and personal-identifier
+data permissions for X sync and Firefox 140 minimum. Android runtime compatibility is not tested or promised.
 
 Run **Publish Firefox Add-ons** manually for an existing numbered release. Mozilla
 web-ext@10.5.0 lints and submits the **listed** package plus matching source. It can
@@ -89,7 +94,7 @@ requirements in AMO. Supply any necessary test account information privately thr
 AMO, never this public repo.
 
 ```bash
-gh workflow run publish-firefox.yml --repo BDR-Pro/De-slopifier -f tag=v0.1.0
+gh workflow run publish-firefox.yml --repo BDR-Pro/De-slopifier -f tag=v0.2.0
 ```
 
 After testing: `gh variable set FIREFOX_PUBLISH_ENABLED --body true --repo BDR-Pro/De-slopifier`.
