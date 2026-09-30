@@ -1,0 +1,2 @@
+/* Deliberately reversible. No original inline styles are overwritten. */
+[data-x-twohop-hidden="1"] { display: none !important; }

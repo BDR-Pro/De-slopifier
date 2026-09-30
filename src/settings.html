@@ -1,0 +1,35 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>De-slopifier — Settings</title><link rel="stylesheet" href="ui.css"></head>
+<body><main><p class="kicker">De-slopifier / Settings</p><h1>A feed closer to your circle.</h1>
+<p>Keep posts by the accounts you follow and, optionally, the accounts they follow. Everything stays in this browser.</p>
+<div id="message" role="status" aria-live="polite"></div>
+<section class="card"><h2>1. Choose your account and behavior</h2>
+<label for="me">Your X handle</label><input id="me" type="text" placeholder="your_handle" autocomplete="off" maxlength="16">
+<p class="hint">The active X account must match this handle. Switch this setting when switching accounts. Network filtering is paused when the signed-in account cannot be identified; ad hiding can remain active.</p>
+<label class="check"><input id="enabled" type="checkbox">Enable filtering</label>
+<label class="check"><input id="hideAds" type="checkbox" checked>Hide detected ads / promoted posts</label>
+<p class="hint">Best-effort hiding of marked promoted posts on Home, including ads from accounts you follow. It does not change X account settings, stop all ad downloads, or block every ad format. With filtering enabled, ads can be hidden before your following lists are ready.</p>
+<label class="check"><input id="second" type="checkbox" checked>Include accounts followed by my direct follows (two hops, not three)</label>
+<label class="check"><input id="forYou" type="checkbox" checked>Only filter For You (assumed to be the first Home tab)</label>
+<p class="hint">When unchecked, both Home tabs are filtered. Profiles, search, replies and notifications are never filtered.</p>
+<label class="check"><input id="unknown" type="checkbox" checked>Hide posts whose author cannot be identified</label>
+<label for="mode">What to do with excluded posts</label><select id="mode"><option value="hide">Hide / collapse — reversible (recommended)</option><option value="remove">Remove article HTML — experimental; reload to undo</option></select>
+<p class="notice">Removing nodes can interfere with X's page rendering. Hiding is the default. Neither mode prevents initial network downloads or guarantees that X will not record impressions.</p>
+<div class="row"><button id="saveSettings">Save settings</button></div></section>
+<section class="card"><h2>2. Add or review following lists</h2>
+<p id="graphStats"></p><p class="hint">Only lists belonging to your account and its direct follows affect the filter. Lists for other accounts are ignored. A missing list means incomplete coverage, not proof that someone is outside your network.</p>
+<p class="notice">Capture is a best-effort reading of visible account cards. Review for suggested accounts or other mistakes. Scroll the entire list before calling it complete. Protected or unavailable relationships are not bypassed.</p>
+<div class="two"><div><label for="owner">Whose Following list is this?</label><input id="owner" type="text" placeholder="your_handle or a direct follow" autocomplete="off" maxlength="16"></div>
+<div><label for="savedLists">Open a saved list</label><select id="savedLists"><option value="">Select a list…</option></select></div></div>
+<label for="handles">Accounts this person follows</label><textarea id="handles" rows="10" spellcheck="false" placeholder="alice&#10;bob&#10;charlie"></textarea>
+<p id="draftInfo" class="hint">One handle per line; commas, spaces, @handles and X profile URLs are also accepted. Do not paste profile bios or tweet text.</p>
+<label class="check"><input id="complete" type="checkbox">I reviewed this list and believe it is complete (not independently verified)</label>
+<div class="row"><button id="replace">Save / replace list</button><button id="merge" class="secondary">Merge partial capture</button><button id="deleteList" class="danger">Delete this saved list</button></div>
+<p class="hint">Replace removes stale follows from that list. Merge only adds accounts and marks the result partial. Unfollowing is not synchronized automatically. Edit one copy of the same list at a time.</p></section>
+<section class="card"><h2>3. Import or back up the graph</h2><p>Import the included JSON format, or export your reviewed lists. JSON never executes as code.</p>
+<label for="importFile">Graph JSON (maximum 20 MB)</label><input id="importFile" type="file" accept=".json,application/json">
+<div class="row"><button id="importButton" class="secondary">Import selected file</button><button id="exportButton" class="secondary">Export saved lists</button></div>
+<p class="hint">Import overwrites only the list owners present in the file, changes your configured handle, and disables filtering until you review it. Other saved lists stay stored. Export includes relationship handles; keep the file private.</p>
+<div class="row"><button id="erase" class="danger">Erase all extension data</button></div></section>
+<footer class="hint">The popup shows cumulative blocked posts for this tab since reload or Reset, split into network filtering and ads. Stable post IDs are counted once; cards without IDs are an estimate. Prototype: selectors must be checked against your live X layout. No automatic graph download. No cookies, tokens, DMs or passwords are accessed by this code. No telemetry or network requests are sent by the extension. Locally stored data is not separately encrypted.</footer>
+</main><script src="core.js"></script><script src="settings.js"></script></body></html>

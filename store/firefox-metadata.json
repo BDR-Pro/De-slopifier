@@ -1,0 +1,27 @@
+{
+  "name": {
+    "en-US": "De-slopifier"
+  },
+  "summary": {
+    "en-US": "Filter X by your following network, hide marked promoted posts, and count blocked posts."
+  },
+  "description": {
+    "en-US": "Keep posts by your direct follows and optionally their follows, using locally supplied/reviewed lists. Optionally hide detected promoted posts. See cumulative blocked posts and an ads breakdown for this tab since reload or Reset. Local-only; no analytics, account actions or automatic full-graph download. Prototype: selectors and actual X layouts can change; current live X and Firefox runtime are not yet verified."
+  },
+  "categories": {
+    "firefox": [
+      "other"
+    ],
+    "android": [
+      "other"
+    ]
+  },
+  "homepage": {
+    "en-US": "https://github.com/BDR-Pro/De-slopifier"
+  },
+  "is_experimental": true,
+  "version": {
+    "license": "MIT",
+    "approval_notes": "Readable JavaScript/CSS/HTML; no bundler. Matching source attached. Build with Python 3.10+ using python build.py. Output: dist/firefox. No npm install required for the build. See docs/REVIEWER-NOTES.md. Requires a logged-in X session for main functionality; reviewer access must be supplied privately in AMO, never in public source."
+  }
+}

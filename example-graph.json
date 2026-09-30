@@ -1,0 +1,18 @@
+{
+  "version": 1,
+  "myHandle": "your_handle",
+  "lists": {
+    "your_handle": {
+      "handles": ["alice", "bob"],
+      "complete": false
+    },
+    "alice": {
+      "handles": ["charlie", "dana"],
+      "complete": false
+    },
+    "bob": {
+      "handles": ["erin"],
+      "complete": false
+    }
+  }
+}

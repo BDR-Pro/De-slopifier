@@ -1,0 +1,67 @@
+name: Publish Chrome Web Store
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing numbered release tag (not rolling)
+        required: true
+        type: string
+        default: v0.1.0
+      mode:
+        type: choice
+        options: [publish, upload]
+        default: publish
+  workflow_call:
+    inputs:
+      tag:
+        required: true
+        type: string
+      mode:
+        type: string
+        default: publish
+    secrets:
+      CWS_CLIENT_ID:
+        required: false
+      CWS_CLIENT_SECRET:
+        required: false
+      CWS_REFRESH_TOKEN:
+        required: false
+permissions:
+  contents: read
+concurrency:
+  group: chrome-store-publishing
+  cancel-in-progress: false
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    environment: chrome-web-store
+    timeout-minutes: 15
+    steps:
+      - name: Validate numbered tag
+        env:
+          RELEASE_TAG: ${{ inputs.tag }}
+        run: '[[ "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]'
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ inputs.tag }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
+        with:
+          python-version: '3.12'
+      - name: Verify release and build
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.tag }}
+        run: |
+          python scripts/check_release.py
+          python build.py
+      - name: Upload or submit for review
+        env:
+          CWS_PUBLISHER_ID: ${{ vars.CWS_PUBLISHER_ID }}
+          CWS_EXTENSION_ID: ${{ vars.CWS_EXTENSION_ID }}
+          CWS_CLIENT_ID: ${{ secrets.CWS_CLIENT_ID }}
+          CWS_CLIENT_SECRET: ${{ secrets.CWS_CLIENT_SECRET }}
+          CWS_REFRESH_TOKEN: ${{ secrets.CWS_REFRESH_TOKEN }}
+          PUBLISH_MODE: ${{ inputs.mode }}
+        run: python scripts/publish_chrome.py --zip dist/release/*-chromium.zip --mode "$PUBLISH_MODE"

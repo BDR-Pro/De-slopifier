@@ -1,0 +1,56 @@
+name: Release
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: main-release
+  cancel-in-progress: false
+jobs:
+  checks:
+    if: github.ref == 'refs/heads/main'
+    uses: ./.github/workflows/ci.yml
+  github-release:
+    needs: checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    outputs:
+      created: ${{ steps.release.outputs.created }}
+      tag: ${{ steps.release.outputs.tag }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
+        with:
+          python-version: '3.12'
+      - run: python build.py
+      - id: release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python scripts/github_release.py
+  chrome:
+    needs: github-release
+    if: needs.github-release.outputs.created == 'true' && vars.CHROME_PUBLISH_ENABLED == 'true'
+    uses: ./.github/workflows/publish-chrome.yml
+    with:
+      tag: ${{ needs.github-release.outputs.tag }}
+      mode: publish
+    secrets:
+      CWS_CLIENT_ID: ${{ secrets.CWS_CLIENT_ID }}
+      CWS_CLIENT_SECRET: ${{ secrets.CWS_CLIENT_SECRET }}
+      CWS_REFRESH_TOKEN: ${{ secrets.CWS_REFRESH_TOKEN }}
+  firefox:
+    needs: github-release
+    if: needs.github-release.outputs.created == 'true' && vars.FIREFOX_PUBLISH_ENABLED == 'true'
+    uses: ./.github/workflows/publish-firefox.yml
+    with:
+      tag: ${{ needs.github-release.outputs.tag }}
+    secrets:
+      AMO_JWT_ISSUER: ${{ secrets.AMO_JWT_ISSUER }}
+      AMO_JWT_SECRET: ${{ secrets.AMO_JWT_SECRET }}

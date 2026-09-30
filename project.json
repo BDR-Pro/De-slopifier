@@ -1,0 +1,6 @@
+{
+  "repository": "BDR-Pro/De-slopifier",
+  "description": "Filter X For You by your following network, hide detected promoted posts, and track blocked posts this session. Chromium and Firefox.",
+  "firefox_id": "de-slopifier@bdr-pro",
+  "license": "MIT"
+}
